@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PuffStock - Cloud Sécurisé</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <meta name="theme-color" content="#6c5ce7">
+    
+    <style>
+        :root {
+            --primary: #6c5ce7;--bg: #f8f9fa;--text: #2d3436;--card: #ffffff;--danger: #ff7675;--success: #00b894;--secondary: #0984e3;
+        }
+        body { font-family: -apple-system, sans-serif; margin: 0; padding: 0; background-color: var(--bg); color: var(--text); }
+        header { background: var(--primary); color: white; padding: 15px; text-align: center; font-size: 1.2rem; font-weight: bold; }
+        .container { padding: 15px; max-width: 800px; margin: 0 auto; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h2 { margin-top: 0; color: var(--primary); font-size: 1.3rem; border-bottom: 2px solid #f1f2f6; padding-bottom: 8px; }
+        .form-row { display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+        .form-row input { flex: 2; min-width: 120px; }
+        .form-row button { flex: 1; min-width: 100px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; font-size: 0.9rem; }
+        input, select, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; font-size: 1rem; }
+        button { background: var(--primary); color: white; border: none; font-weight: bold; cursor: pointer; }
+        .kpi-box { background: #f1f2f6; padding: 12px; border-radius: 8px; text-align: center; }
+        .kpi-val { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .stock-item { background: #fafafa; border: 1px solid #edf2f7; border-radius: 8px; padding: 12px; margin-bottom: 10px; }
+        .stock-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .stock-title { font-weight: bold; font-size: 1.1rem; }
+        .stock-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .qty-controls { display: flex; align-items: center; gap: 5px; }
+        .btn-qty { width: 35px; padding: 5px; background: #e4e7eb; color: #333; }
+        .input-qty { width: 60px; text-align: center; padding: 5px; }
+        .btn-sell { background: var(--success); width: auto; padding: 6px 12px; }
+        .btn-delete { background: var(--danger); width: auto; padding: 6px 12px; }
+        
+        .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
+        .history-table th, .history-table td { border-bottom: 1px solid #edf2f7; padding: 8px; text-align: left; }
+        .history-table th { background: #f1f2f6; color: #4a5568; }
+        .badge-ajout { color: var(--success); font-weight: bold; }
+        .badge-retrait { color: var(--danger); font-weight: bold; }
+        
+        .auth-screen { display: flex; flex-direction: column; gap: 15px; max-width: 400px; margin: 100px auto; padding: 20px; }
+        .hidden { display: none !important; }
+        .btn-action { padding: 5px 10px; width: auto; font-size: 0.9rem; display: inline-block; margin-right: 5px;}
+    </style>
+</head>
+<body>
+
+    <!-- 1. ÉCRAN DE SÉLECTION -->
+    <div id="authSelectionScreen" class="container auth-screen">
+        <div class="card" style="text-align: center;">
+            <h2>💨 Connexion PuffStock</h2>
+            <p>Choisissez une option pour continuer (Données Cloud synchronisées) :</p>
+            <button id="navToLogin" style="margin-bottom: 10px;">Se connecter</button>
+            <button id="navToRegister" style="background: var(--secondary);">Créer un compte</button>
+        </div>
+    </div>
+
+    <!-- 2. ÉCRAN CONNEXION -->
+    <div id="loginScreen" class="container auth-screen hidden">
+        <div class="card">
+            <h2>🔑 Connexion</h2>
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label>Adresse E-mail</label>
+                <input type="email" id="loginEmail" placeholder="Ton adresse e-mail">
+            </div>
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label>Mot de passe</label>
+                <input type="password" id="loginPass" placeholder="Ton mot de passe">
+            </div>
+            <button id="btnActionConnexion" style="margin-bottom: 10px;">Valider la connexion</button>
+            <button id="backFromLogin" style="background:#ccc; color:#333;">Retour</button>
+        </div>
+    </div>
+
+    <!-- 3. ÉCRAN INSCRIPTION (AVEC VÉRIFICATION MAIL) -->
+    <div id="registerScreen" class="container auth-screen hidden">
+        <div class="card">
+            <h2>📝 Créer un compte</h2>
+            <div id="formulaireInscription">
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>Pseudo / Nom</label>
+                    <input type="text" id="regUser" placeholder="Ex: Lucas">
+                </div>
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label>Ton adresse E-mail</label>
+                    <input type="email" id="regEmail" placeholder="Ex: lucas@gmail.com">
+                </div>
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Mot de passe (6 car. min)</label>
+                    <input type="password" id="regPass" placeholder="Créer un mot de passe">
+                </div>
+                <button id="btnActionInscription" style="margin-bottom: 10px;">S'inscrire et recevoir l'e-mail</button>
+            </div>
+
+            <div id="zoneActivationCompte" class="hidden" style="background:#f0fff4; padding:12px; border-radius:8px; border:1px solid #c6f6d5; margin-top:10px;">
+                <p style="font-size:0.9rem; color:#276749; text-align: center;">
+                    <strong>📧 E-mail de vérification envoyé !</strong><br><br>
+                    Clique sur le lien reçu dans ta boîte mail pour valider ton compte, puis clique sur le bouton ci-dessous pour te connecter.
+                </p>
+                <button id="btnVerifOk" style="background:var(--success); margin-top: 10px;">J'ai cliqué sur le lien, me connecter</button>
+            </div>
+            <button id="backFromRegister" style="background:#ccc; color:#333; margin-top:10px;">Retour</button>
+        </div>
+    </div>
+
+    <!-- 4. APPLICATION PRINCIPALE -->
+    <div id="appScreen" class="hidden">
+        <header>💨 PuffStock - Connecté : <span id="usernameConnecte">...</span> <button id="btnDeconnexion" style="width:auto; padding:5px 10px; font-size:0.8rem; background:var(--danger); margin-left:10px;">Déconnexion</button></header>
+        
+        <div class="container">
+            <!-- COMPTABILITÉ & FINANCES -->
+            <div class="card">
+                <h2>💰 Caisse et Comptabilité</h2>
+                <div class="kpi-box">
+                    <label>Solde de la Caisse</label>
+                    <div class="kpi-val" id="totalVentes" style="color: var(--success);">0.00 €</div>
+                </div>
+                
+                <!-- RETRAIT -->
+                <div style="background: #fff8f8; padding: 12px; border-radius: 8px; border: 1px solid #ffe3e3; margin-top: 15px;">
+                    <label><strong>Retirer de l'argent (Code PIN : 0910)</strong></label>
+                    <div class="form-row">
+                        <input type="number" id="montantRetrait" placeholder="Montant (€)">
+                        <input type="text" id="motifRetrait" placeholder="Motif du retrait">
+                        <input type="password" id="codeRetrait" placeholder="Code PIN" style="max-width: 100px;">
+                        <button id="btnRetirer" style="background: var(--secondary);">Retirer</button>
+                    </div>
+                </div>
+
+                <!-- AJOUT MANUEL -->
+                <div style="background: #f0fff4; padding: 12px; border-radius: 8px; border: 1px solid #c6f6d5; margin-top: 15px;">
+                    <label><strong>Ajouter de l'argent (Code PIN : 091010)</strong></label>
+                    <div class="form-row">
+                        <input type="number" id="montantAjout" placeholder="Montant (€)">
+                        <input type="text" id="motifAjout" placeholder="Motif de l'ajout">
+                        <input type="password" id="codeAjout" placeholder="Code PIN" style="max-width: 100px;">
+                        <button id="btnAjouter" style="background: var(--success);">Ajouter</button>
+                    </div>
+                </div>
+
+                <!-- HISTORIQUE DES TRANSACTIONS -->
+                <div style="margin-top: 20px; border-top: 2px solid #edf2f7; padding-top: 15px;">
+                    <h3>📜 Historique des mouvements</h3>
+                    <div style="overflow-x: auto;">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date/Heure</th>
+                                    <th>Type</th>
+                                    <th>Montant</th>
+                                    <th>Motif</th>
+                                </tr>
+                            </thead>
+                            <tbody id="corpsHistorique">
+                                <!-- Données chargées depuis Firebase -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASSISTANT MARKETING IA -->
+            <div class="card" style="background: linear-gradient(135deg, #6c5ce7, #a29bfe); color: white;">
+                <h2 style="color: white; border-bottom: 2px solid rgba(255,255,255,0.2);">🤖 Assistant IA - Offres Spéciales</h2>
+                <p style="font-size: 0.9rem; margin-bottom: 15px; opacity: 0.9;">L'IA analyse tes stocks en temps réel pour générer des offres percutantes adaptées à tes excédents de stock !</p>
+                <button id="btnGenererOffre" style="background: white; color: var(--primary); font-weight: bold;">⚡ Générer une offre avec l'IA</button>
+                <div id="resultatIA" class="hidden" style="background: rgba(255,255,255,0.15); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid rgba(255,255,255,0.2);">
+                    <p id="texteOffre" style="margin: 0; font-weight: 500; white-space: pre-line; line-height: 1.4;"></p>
+                    <button id="btnCopierOffre" style="background: rgba(255,255,255,0.3); color: white; margin-top: 12px; font-size: 0.9rem; padding: 6px 12px; width: auto; border: 1px solid rgba(255,255,255,0.4);">📋 Copier le texte</button>
+                </div>
+            </div>
+
+            <!-- AJOUTER UNE NOUVELLE PUFF -->
+            <div class="card">
+                <h2>➕ Ajouter une nouvelle Puff</h2>
+                <div class="form-row">
+                    <input type="text" id="newSaveur" placeholder="Ex: Blue Razz Ice">
+                    <input type="number" id="newPrix" placeholder="Prix de vente (€)" step="0.1">
+                </div>
+                <input type="number" id="newStock" placeholder="Stock de départ" value="10" style="margin-bottom: 10px;">
+                <button id="btnCreerPuff">Créer la référence</button>
+            </div>
+
+            <!-- LISTE DES STOCKS -->
+            <div class="card">
+                <h2>📦 Inventaire & Ventes</h2>
+                <div id="listeStocks"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INITIALISATION FIREBASE -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getDatabase, ref, set, push, onValue, update, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyCsykp1ez1RX2WTRqn_glX1begM-CrHfqY",
+          authDomain: "puff-stock.firebaseapp.com",
+          databaseURL: "https://puff-stock-default-rtdb.europe-west1.firebasedatabase.app",
+          projectId: "puff-stock",
+          storageBucket: "puff-stock.firebasestorage.app",
+          messagingSenderId: "339291161439",
+          appId: "1:339291161439:web:5de08ddba78e991f9d6cea",
+          measurementId: "G-65HE9D14K4"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        // Mémoire locale pour l'analyse IA
+        let stocksLocaux = {};
+
+        // --- NAVIGATION ÉCRANS ---
+        function basculerEcran(idEcran) {
+            document.getElementById('authSelectionScreen').classList.add('hidden');
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('registerScreen').classList.add('hidden');
+            document.getElementById('appScreen').classList.add('hidden');
+            document.getElementById(idEcran).classList.remove('hidden');
+        }
+
+        document.getElementById('navToLogin').onclick = () => basculerEcran('loginScreen');
+        document.getElementById('navToRegister').onclick = () => basculerEcran('registerScreen');
+        document.getElementById('backFromLogin').onclick = () => basculerEcran('authSelectionScreen');
+        document.getElementById('backFromRegister').onclick = () => basculerEcran('authSelectionScreen');
+        document.getElementById('btnVerifOk').onclick = () => basculerEcran('loginScreen');
+
+        // --- AUTHENTIFICATION ---
+        document.getElementById('btnActionInscription').onclick = () => {
+            const pseudo = document.getElementById('regUser').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const pass = document.getElementById('regPass').value;
+
+            if(!pseudo || !email || !pass) return alert("Remplis tous les champs !");
+
+            createUserWithEmailAndPassword(auth, email, pass)
+                .then((userCredential) => {
+                    updateProfile(userCredential.user, { displayName: pseudo }).then(() => {
+                        // 📧 ENVOI DU LIEN DE VÉRIFICATION
+                        sendEmailVerification(userCredential.user).then(() => {
+                            alert("Compte initialisé ! Un e-mail de validation vient de vous être envoyé.");
+                            document.getElementById('formulaireInscription').classList.add('hidden');
+                            document.getElementById('zoneActivationCompte').classList.remove('hidden');
+                        });
+                    });
+                })
+                .catch(err => alert("Erreur d'inscription : " + err.message));
+        };
+
+        document.getElementById('btnActionConnexion').onclick = () => {
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value;
+
+            if(!email || !pass) return alert("Remplis les champs !");
+
+            signInWithEmailAndPassword(auth, email, pass)
+                .then((userCredential) => {
+                    if(!userCredential.user.emailVerified) {
+                        alert("Votre e-mail n'a pas encore été validé. Cliquez sur le lien reçu par mail !");
+                        signOut(auth);
+                    }
+                })
+                .catch(err => alert("Identifiants incorrects ou erreur : " + err.message));
+        };
+
+        document.getElementById('btnDeconnexion').onclick = () => {
+            signOut(auth);
+        };
+
+        // --- ÉCOUTEUR D'ÉTAT DE CONNEXION ---
+        onAuthStateChanged(auth, (user) => {
+            if (user && user.emailVerified) {
+                document.getElementById('usernameConnecte').innerText = (user.displayName || user.email).toUpperCase();
+                basculerEcran('appScreen');
+                brancherSyncDonnees();
+            } else {
+                basculerEcran('authSelectionScreen');
+                document.getElementById('formulaireInscription').classList.remove('hidden');
+                document.getElementById('zoneActivationCompte').classList.add('hidden');
+            }
+        });
+
+        // --- TEMPS RÉEL FIREBASE DATABASE ---
+        function brancherSyncDonnees() {
+            onValue(ref(db, 'caisse/total'), (snapshot) => {
+                const val = snapshot.val() || 0;
+                document.getElementById('totalVentes').innerText = parseFloat(val).toFixed(2) + " €";
+            });
+
+            onValue(ref(db, 'stocks'), (snapshot) => {
+                const listStocks = snapshot.val();
+                stocksLocaux = listStocks || {}; // Sauvegarde locale pour l'IA
+                
+                const liste = document.getElementById('listeStocks');
+                liste.innerHTML = "";
+                if (!listStocks) {
+                    liste.innerHTML = '<p>Aucun produit enregistré.</p>';
+                    return;
+                }
+                Object.keys(listStocks).forEach(id => {
+                    const item = listStocks[id];
+                    liste.innerHTML += `
+                        <div class="stock-item">
+                            <div class="stock-header">
+                                <div><strong>${item.saveur}</strong> - ${parseFloat(item.prix).toFixed(2)}€</div>
+                                <button class="btn-sell" data-id="${id}" data-qte="${item.quantite}" data-prix="${item.prix}" data-saveur="${item.saveur.replace(/'/g, "\\'")}">🛒 Vendre 1</button>
+                            </div>
+                            <div class="stock-actions">
+                                <div class="qty-controls">
+                                    <button class="btn-qty btn-moins" data-id="${id}" data-qte="${item.quantite}">-</button>
+                                    <input type="number" class="input-qty input-modif" data-id="${id}" value="${item.quantite}">
+                                    <button class="btn-qty btn-plus" data-id="${id}" data-qte="${item.quantite}">+</button>
+                                </div>
+                                <button class="btn-delete btn-suppr" data-id="${id}">🗑️</button>
+                            </div>
+                        </div>`;
+                });
+
+                document.querySelectorAll('.btn-sell').forEach(b => b.onclick = (e) => vendrePuff(e.target.dataset.id, parseInt(e.target.dataset.qte), parseFloat(e.target.dataset.prix), e.target.dataset.saveur));
+                document.querySelectorAll('.btn-moins').forEach(b => b.onclick = (e) => ajusterStock(e.target.dataset.id, parseInt(e.target.dataset.qte), -1));
+                document.querySelectorAll('.btn-plus').forEach(b => b.onclick = (e) => ajusterStock(e.target.dataset.id, parseInt(e.target.dataset.qte), 1));
+                document.querySelectorAll('.btn-suppr').forEach(b => b.onclick = (e) => supprimerPuff(e.target.dataset.id));
+                document.querySelectorAll('.input-modif').forEach(i => i.onchange = (e) => modifierStockManuel(e.target.dataset.id, e.target.value));
+            });
+
+            onValue(ref(db, 'historique'), (snapshot) => {
+                const corps = document.getElementById('corpsHistorique');
+                corps.innerHTML = "";
+                const data = snapshot.val();
+                if (!data) {
+                    corps.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#999;">Aucun mouvement enregistré.</td></tr>`;
+                    return;
+                }
+                const tableauTrie = Object.keys(data).map(key => data[key]).sort((a,b) => b.created_at - a.created_at);
+                tableauTrie.forEach(t => {
+                    const dateClean = new Date(t.created_at).toLocaleDateString('fr-FR') + " " + new Date(t.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'});
+                    const badge = t.type === "Ajout" ? `<span class="badge-ajout">➕ Ajout</span>` : `<span class="badge-retrait">➖ Retrait</span>`;
+                    corps.innerHTML += `<tr><td>${dateClean}</td><td>${badge}</td><td>${parseFloat(t.montant).toFixed(2)} €</td><td>${t.motif || '<em>Non spécifié</em>'}</td></tr>`;
+                });
+            });
+        }
+
+        // --- ASSISTANT MARKETING IA ---
+        document.getElementById('btnGenererOffre').onclick = () => {
+            const keys = Object.keys(stocksLocaux);
+            if (keys.length === 0) {
+                alert("Ajoute d'abord des Puffs dans ton inventaire pour que l'IA puisse travailler !");
+                return;
+            }
+
+            // L'IA repère le produit qui a le plus gros stock pour s'en débarrasser
+            let topItem = null;
+            let maxStock = -1;
+            keys.forEach(key => {
+                if (stocksLocaux[key].quantite > maxStock) {
+                    maxStock = stocksLocaux[key].quantite;
+                    topItem = stocksLocaux[key];
+                }
+            });
+
+            if (!topItem) return;
+
+            const saveur = topItem.saveur;
+            const prix = parseFloat(topItem.prix).toFixed(2);
+            const prixPromo = (topItem.prix * 0.8).toFixed(2); // Réduction de 20%
+
+            const templates = [
+                `🔥 *OFFRE FLASH PUFFSTOCK* 🔥\n\nBesoin de fraîcheur ? La saveur *${saveur}* est disponible dès maintenant à seulement *${prix} €* ! 💨\n\n⚡ *PROMO EXCLUSIVE :* Pour 2 achetées, la 3ème est à moitié prix ! Viens vite récupérer la tienne avant la rupture ! 🏃‍♂️💨`,
+                `⚡ *ALERTE BON PLAN - IA MARKETING* ⚡\n\nStock massif détecté sur la légendaire *${saveur}* ! 💎\n\nExceptionnellement aujourd'hui, elle passe de ${prix} € à seulement *${prixPromo} €* l'unité ! \n📩 Réponds direct à ce message pour réserver ton pack !`,
+                `💨 *DUO PACK DE FOLIE !* 💨\n\nL'IA te propose le combo parfait : prends une *${saveur}* et profite d'un tarif spécial ! \n✨ Prix unitaire ultra canon : *${prix} €*\n🤝 Parles-en à tes potes, livraison rapide possible !`
+            ];
+
+            const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
+            document.getElementById('texteOffre').innerText = randomTemplate;
+            document.getElementById('resultatIA').classList.remove('hidden');
+        };
+
+        document.getElementById('btnCopierOffre').onclick = () => {
+            const texte = document.getElementById('texteOffre').innerText;
+            navigator.clipboard.writeText(texte).then(() => {
+                alert("Offre copiée ! Tu peux maintenant la coller dans ta Story Snapchat ou Instagram. 🔥");
+            });
+        };
+
+        // --- ACTIONS STOCKS & CAISSE ---
+        document.getElementById('btnCreerPuff').onclick = () => {
+            const saveur = document.getElementById('newSaveur').value.trim();
+            const prix = parseFloat(document.getElementById('newPrix').value);
+            const stock = parseInt(document.getElementById('newStock').value) || 0;
+            if(!saveur || isNaN(prix)) return alert("Veuillez remplir le nom et le prix !");
+            
+            const newRef = push(ref(db, 'stocks'));
+            set(newRef, { saveur, quantite: stock, prix }).then(() => {
+                document.getElementById('newSaveur').value = '';
+                document.getElementById('newPrix').value = '';
+            });
+        };
+
+        function supprimerPuff(id) {
+            if(confirm("Supprimer cette puff ?")) remove(ref(db, `stocks/${id}`));
+        }
+
+        function ajusterStock(id, qteActuelle, chg) {
+            update(ref(db, `stocks/${id}`), { quantite: Math.max(0, qteActuelle + chg) });
+        }
+
+        function modifierStockManuel(id, val) {
+            update(ref(db, `stocks/${id}`), { quantite: Math.max(0, parseInt(val) || 0) });
+        }
+
+        function vendrePuff(id, qteActuelle, prix, saveur) {
+            if(qteActuelle > 0) {
+                update(ref(db, `stocks/${id}`), { quantite: qteActuelle - 1 });
+                onValue(ref(db, 'caisse/total'), (snap) => {
+                    set(ref(db, 'caisse/total'), (snap.val() || 0) + prix);
+                }, { onlyOnce: true });
+                const newHisto = push(ref(db, 'historique'));
+                set(newHisto, { type: 'Ajout', montant: prix, motif: `Vente : ${saveur}`, created_at: Date.now() });
+            } else {
+                alert("Plus de stock !");
+            }
+        }
+
+        document.getElementById('btnRetirer').onclick = () => {
+            const mnt = parseFloat(document.getElementById('montantRetrait').value);
+            const motif = document.getElementById('motifRetrait').value.trim();
+            const code = document.getElementById('codeRetrait').value;
+            
+            if(isNaN(mnt) || mnt <= 0 || !motif || code !== "0910") return alert("Données invalides ou code PIN erroné !");
+            
+            onValue(ref(db, 'caisse/total'), (snap) => {
+                set(ref(db, 'caisse/total'), (snap.val() || 0) - mnt);
+            }, { onlyOnce: true });
+
+            const newHisto = push(ref(db, 'historique'));
+            set(newHisto, { type: 'Retrait', montant: mnt, motif, created_at: Date.now() });
+            
+            document.getElementById('montantRetrait').value = '';
+            document.getElementById('motifRetrait').value = '';
+            document.getElementById('codeRetrait').value = '';
+            alert("Retrait enregistré !");
+        };
+
+        document.getElementById('btnAjouter').onclick = () => {
+            const mnt = parseFloat(document.getElementById('montantAjout').value);
+            const motif = document.getElementById('motifAjout').value.trim();
+            const code = document.getElementById('codeAjout').value;
+            
+            if(isNaN(mnt) || mnt <= 0 || !motif || code !== "091010") return alert("Données invalides ou code PIN erroné !");
+            
+            onValue(ref(db, 'caisse/total'), (snap) => {
+                set(ref(db, 'caisse/total'), (snap.val() || 0) + mnt);
+            }, { onlyOnce: true });
+
+            const newHisto = push(ref(db, 'historique'));
+            set(newHisto, { type: 'Ajout', montant: mnt, motif, created_at: Date.now() });
+            
+            document.getElementById('montantAjout').value = '';
+            document.getElementById('motifAjout').value = '';
+            document.getElementById('codeAjout').value = '';
+            alert("Ajout de fonds enregistré !");
+        };
+
+        // --- ENREGISTREMENT DU SERVICE WORKER (PWA) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Error:', err));
+            });
+        }
+    </script>
+</body>
+</html>
